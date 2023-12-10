@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Add a WMS source</title>
+<meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+<link href="https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.css" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.js"></script>
+
+<!--Plugin CSS file with desired skin-->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/ion-rangeslider/2.3.1/css/ion.rangeSlider.min.css"/>
+    
+<!--jQuery-->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ion-rangeslider/2.3.1/js/ion.rangeSlider.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<style>
+    body { margin: 0; padding: 0; }
+    #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+
+    .btn {
+        /* position: absolute; */
+        /* z-index: 2; */
+        border:1px solid #ddd;
+        background-color: #36aadd;
+        color:white;
+        margin:0px 2px;
+        padding:0.15rem 0.75rem;
+
+        width: 30px;
+        line-height: 15px;
+        cursor: pointer;
+        height: 30px;
+        border-radius: 50%;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .scrubber .btn:hover {
+        border:1px solid #ddd;
+        background-color: #2e90ba !important;
+    }
+
+    .irs--flat .irs-from, .irs--flat .irs-to, .irs--flat .irs-single {
+        background-color: #2e90ba !important;
+    }
+
+    .irs--flat .irs-single:before {
+        border-top-color:#2e90ba !important;
+    }
+
+    .irs--flat .irs-handle>i:first-child, .irs--flat .irs-bar--single  {
+        background-color: #2e90ba !important;
+    }
+
+    .scrubber {
+        width: 35vw;
+        min-width: 400px;
+        background-color: white;
+        padding: 5px 20px;
+        border-radius: 5px;
+        display: flex;
+        flex-direction: column-reverse;
+        /* align-items: center; */
+    }
+
+    .scrubber-controls {
+        display: flex;
+        width: 100%;
+        align-items: center;
+        margin:5px 0px;
+        /* justify-content: center; */
+    }
+
+    .scrubber .scrubber-container {
+        flex: 1;
+    }
+
+    @media screen  and (max-width:480px) {
+        .scrubber {
+            min-width: 80vw;
+        }
+    }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+	mapboxgl.accessToken = 'pk.eyJ1IjoiZGF1ZGk5NyIsImEiOiJjanJtY3B1bjYwZ3F2NGFvOXZ1a29iMmp6In0.9ZdvuGInodgDk7cv-KlujA';
+    const map = new mapboxgl.Map({
+        container: 'map',
+        // Choose from Mapbox's core styles, or make your own style with Mapbox Studio
+        style: 'mapbox://styles/mapbox/dark-v11',
+        // projection:'mercator',
+        zoom: 2,
+        center: [-59.482938015303766, 79.98496522473464]
+    });
+
+    function formatDate(date) {
+
+        let currentDate = date.toISOString().split("T")[0];
+        let currentTime = date.toTimeString().slice(0,8)
+
+        return `${currentDate}T${currentTime}Z`;
+    }
+
+    function updateToPTH3(hr) {
+        console.log(hr);
+
+        let vals = [0, 3, 9, 12, 15, 18, 21, 24];
+        let hrs = vals.find(val => val > hr);
+        let hrIndex = vals.findIndex(val => val > hr);
+
+        // console.log(hrs);
+        return `${vals[hrIndex - 1]}`.padStart(2, "0");
+    }
+
+    let startDate = new Date();
+    // startDate.setDate( startDate.getDate() - 15);
+    let hrs = updateToPTH3(startDate.getHours())
+    if(hrs == "00") { 
+        startDate.setDate( startDate.getDate() + 1)
+    }
+    startDate.setHours(hrs, 0, 0);
+
+    startDate = formatDate(startDate);
+   
+    map.on('load', () => {
+       
+       loadWMSLayer(map, startDate);
+       'wms-swell-height-2023-11-28T18:00:00Z'
+       'wms-swell-height-2023-11-28T18:00:00.00Z'
+    });
+
+    function loadWMSLayer(map, time) {
+        console.log(time);
+        let layers = map.getStyle().layers.filter(layer => layer.id.includes("wms-swell-height"));
+        console.log(layers);
+
+        layers.forEach(layer => {
+            if(layer.id.includes(time)) {
+                console.log(layer);
+                map.setPaintProperty(layer.id, 'raster-opacity', 1)
+            } else {
+                map.setPaintProperty(layer.id, 'raster-opacity', 0)
+            }
+        })
+        // if(map.getSource("wms-swell-height")) {
+        //     map.removeLayer("wms-swell-height");
+        //     map.removeLayer('wms-swell-period');
+            
+        //     map.removeSource("wms-swell-height");
+        //     map.removeSource("wms-test-source");
+        // }
+
+        // map.addSource('wms-swell-height', {
+        //     'type': 'raster',
+        //     'tiles': [
+        //             `https://nrt.cmems-du.eu/thredds/wms/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i?format=image/png&styles=boxfill/rainbow&transparent=true&service=WMS&version=1.1.1&request=GetMap&srs=EPSG:3857&width=256&height=256&layers=VHM0_SW1&time=${time}&bbox={bbox-epsg-3857}`,
+        //         ],
+        //         'tileSize': 256
+        // });
+            
+        // map.addLayer(
+        //     {
+        //         'id': 'wms-swell-height',
+        //         'type': 'raster',
+        //         'source': 'wms-swell-height',
+        //         'paint': {}
+        //     }
+        // );
+        
+        // map.addSource('wms-test-source', {
+        //         'type': 'raster',
+        //         'tiles': [
+        //             `https://nrt.cmems-du.eu/thredds/wms/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i?format=image/png&styles=boxfill/rainbow&transparent=true&service=WMS&version=1.1.1&request=GetMap&srs=EPSG:3857&width=256&height=256&layers=VTM01_SW1&time=${time}&bbox={bbox-epsg-3857}`
+        //         ],
+        //         'tileSize': 256
+        //     });
+            
+        // map.addLayer(
+        //     {
+        //         'id': 'wms-swell-period',
+        //         'type': 'raster',
+        //         'source': 'wms-test-source',
+        //         'layout': { 'visibility':'none' }
+        //     }
+        // );   
+    }
+
+    class AnimationControl {
+        constructor() {
+            this.imageHours = [];
+        }
+
+        getHours() {
+            let currentTime = new Date();
+            // currentTime.setDate(currentTime.getDate() - 15);
+            let timeEnd = new Date();
+            timeEnd.setDate(currentTime.getDate() + 10)
+            let rangeDays = 10, hourlyStep = 3;
+            let hours = [];
+
+            // let startHr = updateToPTH3(new Date())
+
+            for(let i=0; i < 210; i+=3) {
+                let dt = new Date();
+                // dt.setDate(dt.getDate() - 15);
+                let hrs = updateToPTH3(dt.getHours());
+                dt.setHours(hrs);
+
+                dt.setHours(dt.getHours() + i, 0, 0, 0);
+                // console.log(dt.getHours());
+                if(dt.getHours() == 0) { 
+                    dt.setDate(dt.getDate() + 1)
+                }
+
+                hours.push(formatDate(dt))
+            }
+
+            return hours;
+        }
+
+        renderAnimateEl() {
+            this.imageHours = this.getHours();
+            var $rangeSlider = jQuery(".js-range-slider");
+            let min = this.imageHours[0];
+            let max = this.imageHours[this.imageHours.length - 1];
+            let hours = [...this.imageHours];
+            this.index = 0;
+            this.prevId = max;
+            this.nextId = 1;
+        
+            $rangeSlider.ionRangeSlider({ 
+                // skin: "big",
+                min:new Date(min).valueOf(),
+                max:new Date(max).valueOf(),
+                step: 10800000,            // default 1 (set step)
+                grid: true,         // default false (enable grid)
+                // grid_num: 8,        // default 4 (set number of grid cells)
+                
+                prefix: "Date: ",
+                hide_min_max: true, 
+                hide_from_to: false, 
+                prettify:function(ts) {
+                    var d = new Date(ts);
+                
+                    return d.toLocaleDateString("en-US", {
+                        year: 'numeric',
+                        month: 'numeric',
+                        day: 'numeric'
+                    });
+                },
+                onChange: (data) => {
+                    let { from } = data;
+                    let imageIndex = 0;
+                    
+                    let dt = new Date(from)
+                    if(dt.getHours() == 0) { 
+                        dt.setDate(dt.getDate() + 1)
+                    }
+                    let fromTime = formatDate(dt);
+                    console.log(from);
+                    console.log(fromTime);
+                    if(hours.indexOf(fromTime) !== -1) {
+                        imageIndex = hours.indexOf(fromTime);
+                    } else {
+                        let lessThanValues = hours.filter(value => value >= from);
+                        imageIndex = hours.indexOf(lessThanValues[0]);
+                    }
+
+                    if(this.index !== imageIndex) {
+                        this.index = imageIndex;
+
+                        this.updateImageOverlay(fromTime)
+                    }
+                    
+                        
+                }
+            });
+
+            $rangeSlider.onclick = (e) => {
+                console.log("Click Event");
+            }
+
+            this.d5_instance = $rangeSlider.data("ionRangeSlider");
+        }
+
+        updateSourceTiles() {
+            
+            let tiles = this.imageHours.map(fromTime => {
+                // console.log(fromTime)
+                let fromString = fromTime.replace(/\:/g, "%3A")
+                let tileUrl = `https://nrt.cmems-du.eu/thredds/wms/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i?format=image/png&styles=boxfill/rainbow&transparent=true&service=WMS&version=1.1.1&request=GetMap&srs=EPSG:3857&width=256&height=256&time=${fromString}&layers=VHM0_SW1&bbox={bbox-epsg-3857}`;
+                
+                return tileUrl;
+            });
+
+            console.log(tiles);
+            map.getSource("wms-test-source").setTiles([...tiles]);            
+        }
+
+        updateImageOverlay(fromTime) {
+            console.log(fromTime);
+            if(!fromTime) {
+                return;
+            }
+
+            let fromString = fromTime.replace("000Z", "00Z").replace(/\:/g, "%3A")
+            let tileUrl = `https://nrt.cmems-du.eu/thredds/wms/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i?format=image/png&styles=boxfill/rainbow&transparent=true&service=WMS&version=1.1.1&request=GetMap&srs=EPSG:3857&width=256&height=256&time=${fromString}&layers=VHM0_SW1&bbox={bbox-epsg-3857}`;
+            
+            // this._map.getSource("wms-test-source").loadTile(tileUrl);
+            let time = fromTime.replace("000Z", "00Z");
+            this.togglerWmsLayer(time);
+            this.d5_instance.update({from:new Date(fromTime).valueOf()});
+        }
+
+        togglerWmsLayer(time) {
+            let mapLayers = this._map.getStyle().layers;
+            let layers = mapLayers.filter(layer => layer.id.includes("wms-swell-height"));
+
+            let currentLayer = this.imageHours[this.index];
+            let nextLayer = this.imageHours[this.index + 1];
+            let lastLayer = this.imageHours[this.imageHours.length - 1];
+
+            console.log(this.index);
+            if(this.nextSixImages) {
+
+            } else {
+                this.nextSixImages = [];
+            }
+            
+
+            this.imageHours.forEach((timestamp, index) => {
+                  this._map.setLayoutProperty(
+                    `wms-swell-height-${timestamp}`,
+                    "visibility",
+                    index === this.index - 1 || index === this.index || index === this.index + 1 ? "visible" : "none"
+                  );
+            });
+
+
+            if (this.index != 0 && nextLayer && lastLayer !== currentLayer) {
+                this._map.setPaintProperty( `wms-swell-height-${nextLayer}`, 'raster-opacity', 0);
+                this._map.setPaintProperty( `wms-swell-height-${currentLayer}`, 'raster-opacity', 1);
+            } else {
+                this._map.setPaintProperty( `wms-swell-height-${currentLayer}`, 'raster-opacity', 1);
+            }
+
+            let layerIndex = this.imageHours
+            if(this.index - 1 >= 0) {
+                let opacity = 1;
+                let layerName = `wms-swell-height-${this.imageHours[this.index - 1]}`;
+                console.log(layerName);
+
+                setTimeout(() => {
+                    const i2 = setInterval(() => {
+                      if (opacity <= 0) {
+                        return clearInterval(i2);
+                      }
+
+                      this._map.setPaintProperty(
+                        `${layerName}`,
+                        "raster-opacity",
+                        opacity
+                      );
+
+                      opacity -= 0.15;
+                    }, 50);
+
+                }, 100);
+            }
+
+            this.prevLayer = `wms-swell-height-${time}`;
+            document.getElementById("current-time").innerHTML = time;
+        }
+
+        updateBtnProperties(isPlaying) {
+            if(this.isPlaying) {
+                this.playButton.innerHTML = `<i class="fa fa-pause"></i>`;
+            } else {
+                this.playButton.innerHTML = `<i class="fa fa-play"></i>`;
+            }
+
+            this.playButton.classList.toggle("active");
+        }
+
+        stopAnimation() {
+            this.isPlaying = false;
+        }
+
+        runAnimation() {
+            if(!this.isPlaying) {
+                return;
+            }
+
+            if(this._map.loaded()) {
+                this.playImages();
+            }
+           
+            requestAnimationFrame(() => {
+                let timerInterval = 1000; 
+                console.log("Raf");
+
+                setTimeout(() => {  
+                    this.runAnimation();                    
+                }, timerInterval);
+            });
+        }
+
+        areTileLoaded() {
+            let loadValues = this.imageHours.map(hrs => {
+               return map.getSource(`wms-swell-height-${hrs}`).loaded()
+            }).every(tile => tile);
+
+            console.log(loadValues);
+            return loadValues;
+        }
+
+        playImages() {
+            if(this.index < this.imageHours.length) {
+                this.index += 1;
+                this.prevId = this.index - 1;
+                this.nextId = this.index + 1;
+            } else {
+                this.index = -1;
+                this.prevId = 0;
+                this.nextId = this.index + 1;
+
+                let imageTimestamp = new Date();
+                this.stopAnimation();
+
+                this.updateBtnProperties(this.isPlaying);
+                return;
+            }
+
+            console.log("Call")
+            // let fromTime = new Date(this.imageHours[this.index]).toISOString();
+            this.updateImageOverlay(this.imageHours[this.index]);
+            // updateLegend(index);
+            // updateTimeStamp(index);
+        }
+
+        fireEventListeners() {
+            this.playButton = document.getElementById("play-btn");
+            this.nextButton  = document.getElementById("next-btn");
+            this.prevButton  = document.getElementById("prev-btn");
+        
+            this.playButton.onclick = (e) => { 
+                this.isPlaying = !this.isPlaying;
+
+                if(this.isPlaying) {
+                    this.runAnimation();
+                } else {
+                    this.stopAnimation();
+                }
+
+                this.updateBtnProperties(this.isPlaying);
+            }
+
+            this.prevButton.onclick = (e) => { 
+                this.handleNextPrevClick("prev");
+            }
+
+            this.nextButton.onclick = (e) => { 
+                this.handleNextPrevClick("next");
+            }
+
+        }
+         
+        handleNextPrevClick(action) {
+            this.isPlaying = false;
+
+            if(action == "prev") {
+                this.index = this.index == 0 ? this.imageHours.length - 1 : this.index - 1;
+            } else {
+                this.index =  this.index == this.imageHours.length - 1 ? 0 : this.index + 1;
+            }
+
+            console.log(this.index);
+            // let fromTime = new Date().toISOString();
+            this.updateImageOverlay(this.imageHours[this.index]);
+            
+        }
+
+        addControlContent() {
+            jQuery('.scrubber').append(`<div class="scrubber-controls">
+                    <button class="play-button btn" id="prev-btn">
+                        <i class="fa fa-angles-left"></i>
+                    </button>
+                    <button class="play-button btn" id="play-btn">
+                        <i class="fa fa-play"></i>
+                        
+                    </button>
+                    <button class="play-button btn" id="next-btn">
+                        <i class="fa fa-angles-right"></i>
+                    </button>
+
+                    <div class="time-step" id="current-time"></div>
+                </div>                
+
+                <div class="scrubber-container">
+                    <input type="text" class="js-range-slider" name="my_range" value="" />
+                </div>
+            `);
+        }
+
+        createTimeLapseLayers() {
+            let tileLayers = [];
+            let visibleDates = this.imageHours.slice(0,5);
+            [...this.imageHours].forEach((hrs,i) => {
+                let id = `wms-swell-height-${hrs}`;
+
+                map.addSource(id, {
+                'type': 'raster',
+                'tiles': [
+                        `https://nrt.cmems-du.eu/thredds/wms/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i?format=image/png&styles=boxfill/rainbow&transparent=true&service=WMS&version=1.1.1&request=GetMap&srs=EPSG:3857&width=256&height=256&layers=VHM0_SW1&time=${hrs}&bbox={bbox-epsg-3857}`,
+                    ],
+                    'tileSize': 512
+                });
+                    
+                map.addLayer(
+                    {
+                        'id': id,
+                        'type': 'raster',
+                        'source': id,
+                        'paint': {
+                            'raster-fade-duration':0,
+                            'raster-opacity': 1
+                        },
+                        'layout':{
+                            'visibility':(i == 0 || i == 1) ? 'visible' : 'none'
+                        }
+                    }
+                ); 
+            })
+
+            // `wms-swell-height-${hrs}`
+           
+
+            // order the layers
+        }
+
+        onAdd(map) {
+            this._map = map;
+            this._container = document.createElement('div');
+            this._container.className = 'mapboxgl-ctrl scrubber';
+            return this._container;
+        }
+        
+        onRemove() {
+            this._container.parentNode.removeChild(this._container);
+            this._map = undefined;
+        }
+
+        
+    } 
+
+    const animateControl = new AnimationControl();
+    map.addControl(animateControl, "bottom-right");
+
+    animateControl.addControlContent();
+    animateControl.renderAnimateEl()
+    animateControl.fireEventListeners();
+    map.on("load", (e) => {
+        animateControl.createTimeLapseLayers();
+
+        map.once("idle", (e) => {
+            console.log("Map Idle");
+        })
+    })
+    
+</script>
+
+</body>
+</html>
